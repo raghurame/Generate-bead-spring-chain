@@ -819,21 +819,106 @@ int main(int argc, char const *argv[])
 	}
 
 	// Adding bonds for chains
+	int nBondsInAmorphousChains = 0;
+
 	for (int i = 0; i < nChainEnds; ++i)
 	{
 		for (int j = 0; j < (nAtomsPerChain - 1); ++j)
 		{
 			if (addedPolymer[i][j].x != 0 && addedPolymer[i][j].y != 0 && addedPolymer[i][j].z != 0 && addedPolymer[i][j + 1].x != 0 && addedPolymer[i][j + 1].y != 0 && addedPolymer[i][j + 1].z != 0)
 			{
-				polymerBonds[i][j].sino = bondIndex + 1;
+				polymerBonds[i][j].sino = bondIndex + nBondsInAmorphousChains;
 				polymerBonds[i][j].bondType = 2;
 				polymerBonds[i][j].batom1 = nAtomsWithinBounds_prev + (i * nAtomsPerChain) + j + 1;
 				polymerBonds[i][j].batom2 = nAtomsWithinBounds_prev + (i * nAtomsPerChain) + j + 2;
+
+				nBondsInAmorphousChains++;
 			}
 		}
 	}
 
 	int currentAtomNumber = 1;
+
+	// Calculate the boundary
+	SIMULATION_BOUNDS finalSimulationBoundary;
+
+	finalSimulationBoundary.xlo = trimmedCrystalAtoms[0].x;
+	finalSimulationBoundary.xhi = trimmedCrystalAtoms[0].x;
+	finalSimulationBoundary.ylo = trimmedCrystalAtoms[0].y;
+	finalSimulationBoundary.yhi = trimmedCrystalAtoms[0].y;
+	finalSimulationBoundary.zlo = trimmedCrystalAtoms[0].z;
+	finalSimulationBoundary.zhi = trimmedCrystalAtoms[0].z;
+
+	for (int i = 1; i < nAtomsWithinBounds_prev; ++i)
+	{
+		if (trimmedCrystalAtoms[i].x < finalSimulationBoundary.xlo) {
+			finalSimulationBoundary.xlo = trimmedCrystalAtoms[i].x; }
+		else if (trimmedCrystalAtoms[i].x > finalSimulationBoundary.xhi) {
+			finalSimulationBoundary.xhi = trimmedCrystalAtoms[i].x; }
+
+		if (trimmedCrystalAtoms[i].y < finalSimulationBoundary.ylo) {
+			finalSimulationBoundary.ylo = trimmedCrystalAtoms[i].y; }
+		else if (trimmedCrystalAtoms[i].y > finalSimulationBoundary.yhi) {
+			finalSimulationBoundary.yhi = trimmedCrystalAtoms[i].y; }
+
+		if (trimmedCrystalAtoms[i].z < finalSimulationBoundary.zlo) {
+			finalSimulationBoundary.zlo = trimmedCrystalAtoms[i].z; }
+		else if (trimmedCrystalAtoms[i].z > finalSimulationBoundary.zhi) {
+			finalSimulationBoundary.zhi = trimmedCrystalAtoms[i].z; }
+	}
+
+	for (int i = 0; i < nChainEnds; ++i)
+	{
+		for (int j = 0; j < nAtomsPerChain; ++j)
+		{
+			if (addedPolymer[i][j].x != 0 && addedPolymer[i][j].y != 0 && addedPolymer[i][j].z != 0)
+			{
+				if (addedPolymer[i][j].x < finalSimulationBoundary.xlo) {
+					finalSimulationBoundary.xlo = addedPolymer[i][j].x; }
+				else if (addedPolymer[i][j].x > finalSimulationBoundary.xhi) {
+					finalSimulationBoundary.xhi = addedPolymer[i][j].x; }
+
+				if (addedPolymer[i][j].y < finalSimulationBoundary.ylo) {
+					finalSimulationBoundary.ylo = addedPolymer[i][j].y; }
+				else if (addedPolymer[i][j].y > finalSimulationBoundary.yhi) {
+					finalSimulationBoundary.yhi = addedPolymer[i][j].y; }
+
+				if (addedPolymer[i][j].z < finalSimulationBoundary.zlo) {
+					finalSimulationBoundary.zlo = addedPolymer[i][j].z; }
+				else if (addedPolymer[i][j].z > finalSimulationBoundary.zhi) {
+					finalSimulationBoundary.zhi = addedPolymer[i][j].z; }
+			}
+		}
+	}
+
+	// Calculate the number of assigned atoms in amorphous chains
+	int nAtomsInAmorphousChains = 0;
+
+	for (int i = 0; i < nChainEnds; ++i)
+	{
+		for (int j = 0; j < nAtomsPerChain; ++j)
+		{
+			if (addedPolymer[i][j].x != 0 && addedPolymer[i][j].y != 0 && addedPolymer[i][j].z != 0)
+			{
+				nAtomsInAmorphousChains++;
+			}
+		}
+	}
+
+	// Printing the header information in data file
+	int totalAtomsInDataFile, totalBondsInDataFile;
+	totalAtomsInDataFile = nAtomsInAmorphousChains + nAtomsWithinBounds_prev;
+	totalBondsInDataFile = nBondsInAmorphousChains + bondIndex - 1;
+
+	// Printing number of atoms, bonds, then types
+	fprintf(outputData, "%d atoms\n%d atom types\n%d bonds\n%d bond types\n\n", totalAtomsInDataFile, 5, totalBondsInDataFile, 1);
+
+	// Printing the boundary information
+	fprintf(outputData, "%lf %lf xlo xhi\n%lf %lf ylo yhi\n%lf %lf zlo zhi\n", finalSimulationBoundary.xlo, finalSimulationBoundary.xhi, finalSimulationBoundary.ylo, finalSimulationBoundary.yhi, finalSimulationBoundary.zlo, finalSimulationBoundary.zhi);
+
+	fprintf(outputData, "\nMasses\n\n1 13.019\n2 14.027\n3 13.019\n4 14.027\n5 15.035\n");
+
+	fprintf(outputData, "\nAtoms\n\n");
 
 	// Printing crystal coordinates
 	for (int i = 0; i < nAtomsWithinBounds_prev; ++i)
@@ -859,9 +944,34 @@ int main(int argc, char const *argv[])
 		{
 			if (addedPolymer[i][j].x != 0 && addedPolymer[i][j].y != 0 && addedPolymer[i][j].z != 0)
 			{
-				fprintf(output, "O %lf %lf %lf\n", addedPolymer[i][j].x, addedPolymer[i][j].y, addedPolymer[i][j].z);
-				fprintf(outputData, "%d %d %d %lf %lf %lf\n", currentAtomNumber, 2, addedPolymer[i][j].atomType, addedPolymer[i][j].x, addedPolymer[i][j].y, addedPolymer[i][j].z);
+				if (addedPolymer[i][j].atomType == 3) {
+					fprintf(output, "F %lf %lf %lf\n", addedPolymer[i][j].x, addedPolymer[i][j].y, addedPolymer[i][j].z); }
+				else {
+					fprintf(output, "O %lf %lf %lf\n", addedPolymer[i][j].x, addedPolymer[i][j].y, addedPolymer[i][j].z); }
+
+				fprintf(outputData, "%d %d %d %lf %lf %lf\n", currentAtomNumber, 2, addedPolymer[i][j].atomType + 2, addedPolymer[i][j].x, addedPolymer[i][j].y, addedPolymer[i][j].z);
+
 				currentAtomNumber++;
+			}
+		}
+	}
+
+	fprintf(outputData, "\nBonds\n\n");
+
+	// Printing bonds in crystalline region
+	for (int i = 0; i < bondIndex; ++i)
+	{
+		fprintf(outputData, "%d %d %d %d\n", crystalBonds[bondIndex].sino, crystalBonds[bondIndex].bondType, crystalBonds[bondIndex].batom1, crystalBonds[bondIndex].batom2);
+	}
+
+	// Printing bonds in amorphous region
+	for (int i = 0; i < nChainEnds; ++i)
+	{
+		for (int j = 0; j < (nAtomsPerChain - 1); ++j)
+		{
+			if (addedPolymer[i][j].x != 0 && addedPolymer[i][j].y != 0 && addedPolymer[i][j].z != 0 && addedPolymer[i][j + 1].x != 0 && addedPolymer[i][j + 1].y != 0 && addedPolymer[i][j + 1].z != 0)
+			{
+				fprintf(outputData, "%d %d %d %d\n", polymerBonds[i][j].sino, polymerBonds[i][j].bondType, polymerBonds[i][j].batom1, polymerBonds[i][j].batom2);
 			}
 		}
 	}
