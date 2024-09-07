@@ -491,7 +491,7 @@ int main(int argc, char const *argv[])
 
 	int nAtomsPerChain = (nMonomers * 2) + ceil (nSideGroupsPerChain);
 
-	countNChainsNAtomsFromGro ("../after_npt1.gro", &nAtomsPerChain, &nChains);
+	// countNChainsNAtomsFromGro ("../after_npt1.gro", &nAtomsPerChain, &nChains);
 	printf("nAtomsPerChain: %d\nnChains: %d\n", nAtomsPerChain, nChains);
 
 	BEAD_POSITIONS **polymerBeads;
@@ -502,8 +502,8 @@ int main(int argc, char const *argv[])
 		polymerBeads[i] = (BEAD_POSITIONS *) malloc (nAtomsPerChain * sizeof (BEAD_POSITIONS));
 	}
 
-	// polymerBeads = generateAtomTypes (polymerBeads, nChains, nAtomsPerChain, nMonomers, nSideGroupsPerChain);
-	polymerBeads = generateAtomTypesFromGro ("../after_npt1.gro", 7202, polymerBeads, nChains, nAtomsPerChain);
+	polymerBeads = generateAtomTypes (polymerBeads, nChains, nAtomsPerChain, nMonomers, nSideGroupsPerChain);
+	// polymerBeads = generateAtomTypesFromGro ("../after_npt1.gro", 7202, polymerBeads, nChains, nAtomsPerChain);
 
 	int nBondsPerChain = ((nMonomers * 2) - 1) + (nSideGroupsPerChain * nChains);
 	BONDS **polymerBonds;

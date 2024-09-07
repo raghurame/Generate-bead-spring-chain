@@ -403,6 +403,8 @@ int main(int argc, char const *argv[])
 
 	double tiltAngle = atof (argv[16]) / 57.2958, bondLength = atof (argv[17]);
 
+	printf("\nTilt angle of the crystalline phase: %lf\n", atof (argv[16]));
+
 	int nMonomers = atoi (argv[18]), nSideGroupsPerChain = atoi (argv[19]);
 
 	int nAtomsPerChain = (nMonomers * 2) + ceil (nSideGroupsPerChain);
@@ -795,6 +797,9 @@ int main(int argc, char const *argv[])
 				else
 				{
 					nextPosition = nextConstrainedWalkPosition (previousPosition1, previousPosition2, nextPosition, bondLength, 120, j + i);
+
+					previousPosition1 = previousPosition2;
+					previousPosition2 = nextPosition;
 				}
 
 				addedPolymer[currentChain][j].x = nextPosition.x;
@@ -803,15 +808,21 @@ int main(int argc, char const *argv[])
 				addedPolymer[currentChain][j].chainID1 = trimmedCrystalAtoms[i].chainID1;
 				addedPolymer[currentChain][j].chainID2 = trimmedCrystalAtoms[i].chainID2;
 
+				if (j > 0)
+				{
+					if (addedPolymer[currentChain][j].atomType == 3)
+					{
+						addedPolymer[currentChain][j - 1].atomType = 1;
+					}
+					else
+					{
+						addedPolymer[currentChain][j - 1].atomType = 2;
+					}
+				}
+
 				// printf("%lf %lf %lf\n", nextPosition.x, nextPosition.y, nextPosition.z);
 				// printf("%d/%d: %lf %lf %lf\n", currentChain, j, addedPolymer[currentChain][j].x, addedPolymer[currentChain][j].y, addedPolymer[currentChain][j].z);
 				// usleep (100000);
-
-				if (addedPolymer[currentChain][j].atomType != 3)
-				{
-					previousPosition1 = previousPosition2;
-					previousPosition2 = nextPosition;
-				}
 			}
 		}
 
@@ -916,25 +927,79 @@ int main(int argc, char const *argv[])
 	// Printing the boundary information
 	fprintf(outputData, "%lf %lf xlo xhi\n%lf %lf ylo yhi\n%lf %lf zlo zhi\n", finalSimulationBoundary.xlo, finalSimulationBoundary.xhi, finalSimulationBoundary.ylo, finalSimulationBoundary.yhi, finalSimulationBoundary.zlo, finalSimulationBoundary.zhi);
 
-	fprintf(outputData, "\nMasses\n\n1 13.019\n2 14.027\n3 13.019\n4 14.027\n5 15.035\n");
+	fprintf(outputData, "\nMasses\n\n1 14.027\n2 14.027\n3 13.019\n4 14.027\n5 15.035\n");
 
 	fprintf(outputData, "\nAtoms\n\n");
+
+	// Changing the atom types of border crystalline stems
+	double finalXLength_crystal = (crystalBounds.xhi - crystalBounds.xlo), finalZLength_crystal = (crystalBounds.zhi - crystalBounds.zlo), finalYLength_crystal = (crystalBounds.yhi - crystalBounds.ylo), yBuffer, xBuffer, zBuffer;
+	yBuffer = finalYLength_crystal * 0.1;
+	xBuffer = finalXLength_crystal * 0.1;
+	zBuffer = finalZLength_crystal * 0.1;
+
+	for (int i = 0; i < nAtomsWithinBounds_prev; ++i) {
+		trimmedCrystalAtoms[i].atomType = 1; }
+
+	printf("\nSimulation box length\n~~~~~~~~~~~~~~~~~~~~~\n\nX length: %lf\nY length: %lf\nZ length: %lf\n\n", finalXLength_crystal, finalYLength_crystal, finalZLength_crystal);
+
+	// Check this loop. Atom type 2 is not being assigned properly.
+	for (int i = 0; i < nAtomsWithinBounds_prev; ++i)
+	{
+		//if (finalYLength_crystal > finalXLength_crystal && finalYLength_crystal > finalZLength_crystal)
+		//{
+			if (trimmedCrystalAtoms[i].y < (crystalBounds.ylo + yBuffer) || trimmedCrystalAtoms[i].y > (crystalBounds.yhi - yBuffer))
+			{
+				trimmedCrystalAtoms[i].atomType = 2;
+
+				for (int j = 0; j < nAtomsWithinBounds_prev; ++j)
+				{
+					if (trimmedCrystalAtoms[j].chainID1 == trimmedCrystalAtoms[i].chainID1 && trimmedCrystalAtoms[j].chainID2 == trimmedCrystalAtoms[i].chainID2) {
+						trimmedCrystalAtoms[j].atomType = 2; }
+				}
+			}
+		//}
+/*		else if (finalXLength_crystal > finalYLength_crystal && finalXLength_crystal > finalZLength_crystal)
+		{
+			if (trimmedCrystalAtoms[i].x < (crystalBounds.xlo + xBuffer) || trimmedCrystalAtoms[i].x > (crystalBounds.xhi - xBuffer))
+			{
+				trimmedCrystalAtoms[i].atomType = 2;
+
+				for (int j = 0; j < nAtomsWithinBounds_prev; ++j)
+				{
+					if (trimmedCrystalAtoms[j].atomType == trimmedCrystalAtoms[i].atomType) {
+						trimmedCrystalAtoms[j].atomType = 2; }
+				}
+			}
+		}
+		else if (finalZLength_crystal > finalXLength_crystal & finalZLength_crystal > finalYLength_crystal)
+		{
+			if (trimmedCrystalAtoms[i].z < (crystalBounds.zlo + zBuffer) || trimmedCrystalAtoms[i].z > (crystalBounds.zhi - zBuffer))
+			{
+				trimmedCrystalAtoms[i].atomType = 2;
+
+				for (int j = 0; j < nAtomsWithinBounds_prev; ++j)
+				{
+					if (trimmedCrystalAtoms[j].atomType == trimmedCrystalAtoms[i].atomType) {
+						trimmedCrystalAtoms[j].atomType = 2; }
+				}
+			}
+		}
+*/	}
 
 	// Printing crystal coordinates
 	for (int i = 0; i < nAtomsWithinBounds_prev; ++i)
 	{
-		if (trimmedCrystalAtoms[i].endGroup == 1)
+		if (trimmedCrystalAtoms[i].atomType == 1)
 		{
 			fprintf(output, "C %lf %lf %lf\n", trimmedCrystalAtoms[i].x, trimmedCrystalAtoms[i].y, trimmedCrystalAtoms[i].z);
-			fprintf(outputData, "%d %d %d %lf %lf %lf\n", currentAtomNumber, 1, 1, trimmedCrystalAtoms[i].x, trimmedCrystalAtoms[i].y, trimmedCrystalAtoms[i].z);
-			currentAtomNumber++;
 		}
-		else if (trimmedCrystalAtoms[i].endGroup == 0)
+		else if (trimmedCrystalAtoms[i].atomType == 2)
 		{
 			fprintf(output, "N %lf %lf %lf\n", trimmedCrystalAtoms[i].x, trimmedCrystalAtoms[i].y, trimmedCrystalAtoms[i].z);
-			fprintf(outputData, "%d %d %d %lf %lf %lf\n", currentAtomNumber, 1, 2, trimmedCrystalAtoms[i].x, trimmedCrystalAtoms[i].y, trimmedCrystalAtoms[i].z);
-			currentAtomNumber++;
 		}
+
+		fprintf(outputData, "%d %d %d %lf %lf %lf\n", currentAtomNumber, 1, trimmedCrystalAtoms[i].atomType, trimmedCrystalAtoms[i].x, trimmedCrystalAtoms[i].y, trimmedCrystalAtoms[i].z);
+		currentAtomNumber++;
 	}
 
 	// Printing chain coordinates
